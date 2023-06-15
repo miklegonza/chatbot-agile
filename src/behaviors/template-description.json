@@ -1,0 +1,11 @@
+{
+    "template": "Plantilla que genera el prompt con un rol, comportamiento y reglas definidas",
+    "skin": "Rol que tendrá el bot",
+    "speciality": "Especialidad o función del rol",
+    "skin_rules": "Cualidades humanas del rol",
+    "system_rules": "Reglas del sistema que el rol debe cumplir",
+    "skin_tasks": "Tareas que realizará el rol en función de su especilidad",
+    "business_definitions": "Definiciones particulares de negocio",
+    "business_rules": "Reglas específicas de negocio",
+    "faqs": "Listado de preguntas frecuentes que el rol debe conocer"
+}
