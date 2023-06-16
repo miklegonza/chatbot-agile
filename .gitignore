@@ -1,6 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node,osx,vim,emacs,macos,visualstudiocode,sublimetext,intellij+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,osx,vim,emacs,macos,visualstudiocode,sublimetext,intellij+all
 
+cosas-importantes.md
+
 ### Emacs ###
 # -*- mode: gitignore; -*-
 *~
