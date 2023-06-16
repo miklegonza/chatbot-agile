@@ -19,16 +19,20 @@ import { ConversationController } from './infrastructure/controllers/conversatio
 const baseTemplate = 'What is a good name for a company that makes {product}?';
 const templatePath = './src/behaviors/template-example.json';
 
-const main = async (message: any) => {
+const main = async () => {
+    return await listen();
+};
+
+const processMessage = async (message: string) => {
+    const data = {
+        body: {
+            template: message,
+            templateData: { product: 'SCRUM' },
+        },
+    };
     try {
-        const event = {
-            body: {
-                template: message,
-                templateData: { product: 'SCRUM' },
-            },
-        };
         const controller = AppContainer.get<ConversationController>(ConversationController);
-        const { result } = await controller.conversation(event);
+        const { result } = await controller.conversation(data);
         return result.text.substring(2);
     } catch (error: any) {
         console.error('Error:', error);
@@ -52,7 +56,7 @@ const listen = async () => {
 };
 
 const send = async (answer: string) => {
-    const response = await main(answer);
+    const response = await processMessage(answer);
     console.log('SALIDA:', response);
 };
 
@@ -68,19 +72,17 @@ const loadTemplateFromJSON = async (path: string) => {
             system_rules: behavior.system_rules.join(', '),
             skin_tasks: behavior.skin_tasks.join(', '),
             business_definitions: behavior.business_definitions.join(', '),
-            business_rules: behavior.business_rules.join(', ')
+            business_rules: behavior.business_rules.join(', '),
         };
         console.log('TEMPLATE_DATA_JSON:', templateData);
         return templateData;
-    } catch(error: any) {
+    } catch (error: any) {
         console.error('Error:', error);
         return { error };
     }
 };
 
-//listen();
-
-loadTemplateFromJSON(templatePath);
+main();
 
 /*
 const templateData = {
