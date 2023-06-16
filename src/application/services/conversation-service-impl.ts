@@ -10,12 +10,12 @@ export class ConversationServiceImpl implements ConversationService {
         private conversationEngine: ConversationEngine,
     ) {}
 
-    executeConversationModel(event: any): Promise<any> {
-        return Promise.resolve(this.conversationEngine.buildChain(event)
-        .then((result) => {
-            
-        }).catch((err) => {
-            
-        }));
+    async executeConversationModel(event: any): Promise<any> {
+        console.log('SERVICE input:', JSON.stringify(event));
+
+        const payload = event.body;
+        const template = payload.template;
+        const templateData = payload.templateData;
+        return await Promise.resolve(this.conversationEngine.buildChain(template, templateData));
     }
 }

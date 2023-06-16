@@ -16,13 +16,10 @@
     "prettier:list": "prettier --list-different \"./{test,src}/**/*.ts\" || ECHO .",
     "prettier:write": "prettier --write  \"./{test,src}/**/*.ts\"",
     "prettier": "prettier --check  \"./{test,src}/**/*.ts\"",
+    "dev": "node dist/index",
     "clean": "rimraf dist && rimraf coverage && rimraf langchain-conversations.zip",
     "build": "npm run clean && npm run build-app",
-    "build-app": "tsc -p tsconfig.json",
-    "postbuild": "npm run copy-pck-files && npm run copy-mdl-files && npm run zip && mv langchain-conversations.zip dist/",
-    "copy-pck-files": "copyfiles -u 1 src/package.json dist/src",
-    "copy-mdl-files": "cp package.json dist && cp .npmrc dist && cd dist && npm i --production && cd ../",
-    "zip": "cd dist/ && bestzip  ../langchain-conversations.zip *"
+    "build-app": "tsc -p tsconfig.json"
   },
   "author": "miklegonza",
   "license": "ISC",
@@ -55,6 +52,7 @@
     "express": "^4.18.2",
     "inversify": "^6.0.1",
     "langchain": "^0.0.92",
+    "reflect-metadata": "^0.1.13",
     "uuid": "^9.0.0"
   }
 }
