@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
-import { ConversationEngine } from '../ports/conversation-engine';
+import { ConversationModel } from '../ports/conversation-model';
 import { OpenAI } from 'langchain/llms/openai';
 import { PromptTemplate } from 'langchain/prompts';
 import { LLMChain } from 'langchain/chains';
 import { injectable } from 'inversify';
 
 @injectable()
-export class LangchainEngineImpl implements ConversationEngine {
+export class LangchainConversationModelImpl implements ConversationModel {
 
     private templatePath = './src/behaviors/template-example.json';
 

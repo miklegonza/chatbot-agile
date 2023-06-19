@@ -7,20 +7,6 @@ const main = async () => {
     return await listen();
 };
 
-const processMessage = async (message: string) => {
-    const data = {
-        body: message,
-    };
-    try {
-        const controller = AppContainer.get<ConversationController>(ConversationController);
-        const { result } = await controller.conversation(data);
-        return result.text.substring(2);
-    } catch (error: any) {
-        console.error('Error:', error);
-        return { error };
-    }
-};
-
 const listen = async () => {
     const rl = createInterface({
         input: process.stdin,
@@ -39,6 +25,20 @@ const listen = async () => {
 const send = async (answer: string) => {
     const response = await processMessage(answer);
     console.log('SALIDA:', response);
+};
+
+const processMessage = async (message: string) => {
+    const data = {
+        body: message,
+    };
+    try {
+        const controller = AppContainer.get<ConversationController>(ConversationController);
+        const { result } = await controller.conversation(data);
+        return result.text.substring(2);
+    } catch (error: any) {
+        console.error('Error:', error);
+        return { error };
+    }
 };
 
 main();

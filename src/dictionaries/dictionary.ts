@@ -1,5 +1,5 @@
 export const UTILS = {
-    ConversationEngine: Symbol.for('ConversationEngine')
+    ConversationModel: Symbol.for('ConversationModel')
 };
 
 export const SERVICES = {
