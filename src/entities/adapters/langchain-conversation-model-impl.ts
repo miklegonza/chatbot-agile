@@ -22,16 +22,26 @@ export class LangchainConversationModelImpl implements ConversationModel {
         });
         const promptTemplate = PromptTemplate.fromTemplate(templateJSON.template);
         const prompt = await promptTemplate.partial(templateJSON.templateData);
+        const trashTemplate = `Esta es una conversación entre un asesor amable y experto en metodología SCRUM y un colaborador del Banco Popular.
+            Conversación actual:
+            {chat_history}
+            Colaborador: {input}
+            Asesor:`;
+        const tempPrompt = PromptTemplate.fromTemplate(trashTemplate);
         const chain = new ConversationChain({
             llm: model,
-            prompt,
+            prompt: tempPrompt,
             memory,
             verbose: true,
         });
         const res = await chain.call({ input: payload });
-        console.log({res, memory: await memory.loadMemoryVariables({})});
-        
-        return res;
+        //console.log({res, memory: await memory.loadMemoryVariables({})});
+        const data = {
+            message: payload,
+            AIResponse: res.response,
+            tokens: 10 // TODO
+        }
+        return data;
     }
 
     private buildPrompt(): string {
@@ -51,9 +61,7 @@ export class LangchainConversationModelImpl implements ConversationModel {
                 speciality: behavior.speciality,
                 skin_rules: behavior.skin_rules.join(', '),
                 system_rules: behavior.system_rules.join(', '),
-                skin_tasks: behavior.skin_tasks.join(', '),
                 business_definitions: behavior.business_definitions.join(', '),
-                business_rules: behavior.business_rules.join(', '),
             };
             const templateVariables = Object.keys(templateData);
             return { template: behavior.template + format, templateVariables, templateData };

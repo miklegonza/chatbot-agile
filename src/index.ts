@@ -34,7 +34,7 @@ const processMessage = async (message: string) => {
     try {
         const controller = AppContainer.get<ConversationController>(ConversationController);
         const { result } = await controller.conversation(data);
-        return result.response;
+        return result;
     } catch (error: any) {
         console.error('Error:', error);
         return { error };
