@@ -2,46 +2,106 @@ import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { ConversationModel } from '../ports/conversation-model';
 import { OpenAI } from 'langchain/llms/openai';
-import { PromptTemplate } from 'langchain/prompts';
-import { ConversationChain } from 'langchain/chains';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { ConversationSummaryMemory } from 'langchain/memory';
+import { PineconeClient } from '@pinecone-database/pinecone';
+import { PineconeStore } from 'langchain/vectorstores/pinecone';
+import { Document } from 'langchain/document';
+import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from 'langchain/prompts';
 import { injectable } from 'inversify';
 
 @injectable()
 export class LangchainConversationModelImpl implements ConversationModel {
     private templatePath = './src/behaviors/template-reduced.json';
+    private systemTemplate = `La conversación con el colaborador se ha desarrollado de la siguiente manera:
+    Historial: {chat_history}
+    
+    Usa la información contenida en el historial y el siguiente contexto para responder la pregunta del usuario. 
+    Si no conoces la respuesta, solo dí que no puedes responder a la pregunta, no intentes construir una respuesta.
+    
+    Contexto: {context}`;
 
     async buildChain(payload: any): Promise<any> {
+        const indexName = process.env.PINECONE_INDEX || '';
+        const client = new PineconeClient();
+        await client.init({
+            apiKey: process.env.PINECONE_API_KEY || '',
+            environment: process.env.PINECONE_ENVIRONMENT || '',
+        });
+        console.log('Ejecutando el query en Pinecone...');
+
+        const pineconeIndex = client.Index(indexName);
+        const pineconeStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), { pineconeIndex });
+        const matches = await pineconeStore.similaritySearchWithScore(payload, 5);
+        console.log(`${matches.length} similitudes encontradas...`);
+
+        if (!matches.length) {
+            console.log('No hay similitudes. GPT-3 no se usó');
+            return Promise.reject('No hay similitudes'); // TODO
+        }
+
+        const model = new OpenAI({ modelName: 'gpt-3.5-turbo', verbose: true });
+
+        const concatPageContent = matches
+            .map((match: any) => match[0].metadata.pageContent)
+            .join(' ')
+            .replaceAll('\n', '');
+
+        const messages = [
+            SystemMessagePromptTemplate.fromTemplate(this.systemTemplate),
+            HumanMessagePromptTemplate.fromTemplate('{question}'),
+        ];
+
+        const chatPrompt = ChatPromptTemplate.fromPromptMessages(messages);
+        const partialPrompt = await chatPrompt.partial({ context: concatPageContent });
+
+        const vectorStore = await PineconeStore.fromDocuments(
+            [new Document({ pageContent: concatPageContent })],
+            new OpenAIEmbeddings(),
+            {
+                pineconeIndex,
+            },
+        );
+
+        const chain = ConversationalRetrievalQAChain.fromLLM(model, vectorStore.asRetriever(), {
+            inputKey: 'question',
+            outputKey: 'answer',
+            memory: new ConversationSummaryMemory({
+                memoryKey: 'chat_history',
+                llm: new OpenAI({ modelName: 'gpt-3.5-turbo', temperature: 0, verbose: true }),
+            }),
+            qaChainOptions: {
+                type: 'stuff',
+                prompt: partialPrompt,
+            },
+        });
+
+        const result = await chain.call({
+            payload,
+        });
+
+        const data = {
+            message: payload,
+            AIResponse: result.text,
+            tokens: 10, // TODO
+        };
+        return data;
+
+        /* JSON Logic
         const templateJSON = await this.loadTemplateFromJSON(this.templatePath);
         //console.log('CALL JSON:', templateJSON);
-
-        const model = new OpenAI({ temperature: 0.3 });
-        const memory = new ConversationSummaryMemory({
-            memoryKey: 'chat_history',
-            llm: new OpenAI({ modelName: 'gpt-3.5-turbo', temperature: 0 }),
-        });
         const promptTemplate = PromptTemplate.fromTemplate(templateJSON.template);
-        const prompt = await promptTemplate.partial(templateJSON.templateData);
-        const trashTemplate = `Esta es una conversación entre un asesor amable y experto en metodología SCRUM y un colaborador del Banco Popular.
-            Conversación actual:
-            {chat_history}
-            Colaborador: {input}
-            Asesor:`;
-        const tempPrompt = PromptTemplate.fromTemplate(trashTemplate);
-        const chain = new ConversationChain({
+        const prompt = await promptTemplate.partial(templateJSON.templateData);*/
+
+        /* const chain = new ConversationChain({
             llm: model,
             prompt: tempPrompt,
             memory,
             verbose: true,
         });
         const res = await chain.call({ input: payload });
-        //console.log({res, memory: await memory.loadMemoryVariables({})});
-        const data = {
-            message: payload,
-            AIResponse: res.response,
-            tokens: 10 // TODO
-        }
-        return data;
+        console.log({res, memory: await memory.loadMemoryVariables({})}); */
     }
 
     private buildPrompt(): string {
