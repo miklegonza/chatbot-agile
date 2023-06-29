@@ -1,14 +1,13 @@
 import { injectable } from 'inversify';
-import { ConversationStore } from '../ports/conversation-store';
-import { readFile, writeFile } from 'node:fs/promises';
 import moment from 'moment';
+import { readFile, writeFile } from 'node:fs/promises';
+import { ConversationStore } from '../ports/conversation-store';
 
 @injectable()
 export class JSONConversationStoreImpl implements ConversationStore {
     async saveInteraction(data: any, conversationHistory?: any): Promise<any> {
         const filename = data.phone.substring(10) + '.json';
         const path = `./chats/${filename}`;
-        console.log('PATH:', path);
         const messageDate = moment().format('DD-MM-YYYY hh:mm');
         const interaction = {
             phone: data.phone,
@@ -47,7 +46,8 @@ export class JSONConversationStoreImpl implements ConversationStore {
     }
     async getHistory(phone: string): Promise<any> {
         try {
-            const path = `./chats/${phone}.json`;
+            const filename = phone.substring(10) + '.json';
+            const path = `./chats/${filename}`;
             const currentFile = await readFile(path, 'utf-8');
             return JSON.parse(currentFile);
         } catch (error: any) {

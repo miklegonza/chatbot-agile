@@ -17,8 +17,6 @@ export class ConversationServiceImpl implements ConversationService {
     ) {}
 
     async executeConversationModel(event: any): Promise<any> {
-        console.log('SERVICE input:', JSON.stringify(event));
-
         const payload = event.body;
         return Promise.resolve(await this.conversationModel.buildChain(payload.message))
             .then(async (data) => {
@@ -33,16 +31,9 @@ export class ConversationServiceImpl implements ConversationService {
                     tokens: data.tokens,
                     sid: data.sid,
                 };
-                const history = await this.conversationStore.getHistory(interaction.phone).catch(async (error) => {
-                    if (error.code === 'ENOENT') {
-                        console.log('ERROR.CODE === ENOENT es TRUE', error);
-                        await this.conversationStore.saveInteraction(interaction);
-                    } else {
-                        console.log('ERROR.CODE === ENOENT es FALSE', error);
-                        throw { error };
-                    }
+                await this.conversationStore.getHistory(interaction.phone).then(async (data) => {
+                    await this.conversationStore.saveInteraction(interaction, data);
                 });
-                await this.conversationStore.saveInteraction(interaction, history);
                 return interaction.AIResponse;
             })
             .catch((error) => {

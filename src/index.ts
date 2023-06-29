@@ -12,10 +12,10 @@ app.use(express.json());
 const listen = async (req: Request, res: Response) => {
     const message = req.body.Body;
     const userPhone = req.body.From;
-    console.log(`Received message from ${userPhone}: ${message}`);
+    console.log(`Mensaje recibido de ${userPhone}: ${message}`);
 
     const sent = await processMessage(userPhone, message);
-    console.log('Mensaje enviado a', userPhone, ':', sent);
+    console.log(`Mensaje enviado a ${userPhone}:`, sent);
 };
 
 const processMessage = async (to: string, message: string) => {

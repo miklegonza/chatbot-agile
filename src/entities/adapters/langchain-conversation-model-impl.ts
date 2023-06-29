@@ -35,11 +35,9 @@ export class LangchainConversationModelImpl implements ConversationModel {
         const pineconeIndex = client.Index(indexName);
         const pineconeStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), { pineconeIndex, namespace: 'kanban' });
         const matches = await pineconeStore.similaritySearchWithScore(payload, 2);
-        console.log(`${matches.length} similitudes encontradas...`);
 
         if (!matches.length) {
-            console.log('No hay similitudes. GPT-3 no se usó');
-            return Promise.reject('No hay similitudes'); // TODO
+            return Promise.reject('No hay similitudes. GPT-3 no se usó'); // TODO
         }
 
         const model = new OpenAI({ modelName: 'gpt-3.5-turbo', verbose: true });
@@ -89,21 +87,6 @@ export class LangchainConversationModelImpl implements ConversationModel {
             tokens: 10, // TODO
         };
         return data;
-
-        /* JSON Logic
-        const templateJSON = await this.loadTemplateFromJSON(this.templatePath);
-        //console.log('CALL JSON:', templateJSON);
-        const promptTemplate = PromptTemplate.fromTemplate(templateJSON.template);
-        const prompt = await promptTemplate.partial(templateJSON.templateData);*/
-
-        /* const chain = new ConversationChain({
-            llm: model,
-            prompt: tempPrompt,
-            memory,
-            verbose: true,
-        });
-        const res = await chain.call({ input: payload });
-        console.log({res, memory: await memory.loadMemoryVariables({})}); */
     }
 
     private buildPrompt(): string {
