@@ -1,39 +1,33 @@
-import { createInterface } from 'node:readline';
-import { promisify } from 'node:util';
+import 'dotenv/config';
+import express, { Request, Response, urlencoded } from 'express';
 import { AppContainer } from './assembler';
 import { ConversationController } from './infrastructure/controllers/conversation-controller';
 
-const main = async () => {
-    return await listen();
+const port = process.env.PORT;
+const app = express();
+
+app.use(urlencoded({ extended: false }));
+app.use(express.json());
+
+const listen = async (req: Request, res: Response) => {
+    const message = req.body.Body;
+    const userPhone = req.body.From;
+    console.log(`Received message from ${userPhone}: ${message}`);
+
+    const sent = await processMessage(userPhone, message);
+    console.log('Mensaje enviado a', userPhone, ':', sent);
 };
 
-const listen = async () => {
-    const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-    const question = promisify(rl.question).bind<any>(rl);
-    const breakLoop = true;
-    while (breakLoop) {
-        const answer = await question('Mensaje -> ');
-        if (answer === 'Terminar') break;
-        await send(answer);
-    }
-    rl.close();
-};
-
-const send = async (answer: string) => {
-    const response = await processMessage(answer);
-    console.log('SALIDA:', response);
-};
-
-const processMessage = async (message: string) => {
-    const data = {
-        body: message,
+const processMessage = async (to: string, message: string) => {
+    const payload = {
+        body: {
+            phone: to,
+            message,
+        },
     };
     try {
         const controller = AppContainer.get<ConversationController>(ConversationController);
-        const { result } = await controller.conversation(data);
+        const { result } = await controller.conversation(payload);
         return result;
     } catch (error: any) {
         console.error('Error:', error);
@@ -41,4 +35,7 @@ const processMessage = async (message: string) => {
     }
 };
 
-main();
+app.get('/', async (req: Request, res: Response) => res.send('Hola mundo :)'));
+app.post('/whatsapp', listen);
+
+app.listen(port, () => console.log(`Servidor en el puerto: ${port}`));
