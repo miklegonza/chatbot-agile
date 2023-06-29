@@ -1,15 +1,15 @@
+import { PineconeClient } from '@pinecone-database/pinecone';
 import 'dotenv/config';
+import { injectable } from 'inversify';
+import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { Document } from 'langchain/document';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import { OpenAI } from 'langchain/llms/openai';
+import { ConversationSummaryMemory } from 'langchain/memory';
+import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
+import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { readFile } from 'node:fs/promises';
 import { ConversationModel } from '../ports/conversation-model';
-import { OpenAI } from 'langchain/llms/openai';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { ConversationSummaryMemory } from 'langchain/memory';
-import { PineconeClient } from '@pinecone-database/pinecone';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { Document } from 'langchain/document';
-import { ConversationalRetrievalQAChain } from 'langchain/chains';
-import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from 'langchain/prompts';
-import { injectable } from 'inversify';
 
 @injectable()
 export class LangchainConversationModelImpl implements ConversationModel {
@@ -17,8 +17,9 @@ export class LangchainConversationModelImpl implements ConversationModel {
     private systemTemplate = `La conversación con el colaborador se ha desarrollado de la siguiente manera:
     Historial: {chat_history}
     
-    Usa la información contenida en el historial y el siguiente contexto para responder la pregunta del usuario. 
-    Si no conoces la respuesta, solo dí que no puedes responder a la pregunta, no intentes construir una respuesta.
+    Usa la información contenida en el historial y el siguiente contexto para responder la pregunta del usuario en máximo 60 palabras.
+    Si la respuesta a la pregunta involucra un listado de elementos, genera la respuesta en forma de items resumiendo en una frase cada elemento. 
+    Si no conoces la respuesta o la pregunta no está relacionada con el contexto dado, dí que no puedes responder a la pregunta, no intentes construir una respuesta.
     
     Contexto: {context}`;
 
@@ -32,8 +33,8 @@ export class LangchainConversationModelImpl implements ConversationModel {
         console.log('Ejecutando el query en Pinecone...');
 
         const pineconeIndex = client.Index(indexName);
-        const pineconeStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), { pineconeIndex });
-        const matches = await pineconeStore.similaritySearchWithScore(payload, 5);
+        const pineconeStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), { pineconeIndex, namespace: 'kanban' });
+        const matches = await pineconeStore.similaritySearchWithScore(payload, 2);
         console.log(`${matches.length} similitudes encontradas...`);
 
         if (!matches.length) {
@@ -61,6 +62,7 @@ export class LangchainConversationModelImpl implements ConversationModel {
             new OpenAIEmbeddings(),
             {
                 pineconeIndex,
+                namespace: 'ignore'
             },
         );
 
@@ -78,7 +80,7 @@ export class LangchainConversationModelImpl implements ConversationModel {
         });
 
         const result = await chain.call({
-            payload,
+            question: payload,
         });
 
         const data = {

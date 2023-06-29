@@ -6,7 +6,9 @@ import moment from 'moment';
 @injectable()
 export class JSONConversationStoreImpl implements ConversationStore {
     async saveInteraction(data: any, conversationHistory?: any): Promise<any> {
-        const path = `./chats/${data.phone}.json`;
+        const filename = data.phone.substring(10) + '.json';
+        const path = `./chats/${filename}`;
+        console.log('PATH:', path);
         const messageDate = moment().format('DD-MM-YYYY hh:mm');
         const interaction = {
             phone: data.phone,
