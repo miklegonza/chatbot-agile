@@ -53,8 +53,6 @@ export class LangchainConversationModelImpl implements ConversationModel {
         ];
 
         const chatPrompt = ChatPromptTemplate.fromPromptMessages(messages);
-        const partialPrompt = await chatPrompt.partial({ context: concatPageContent });
-
         const vectorStore = await PineconeStore.fromDocuments(
             [new Document({ pageContent: concatPageContent })],
             new OpenAIEmbeddings(),
@@ -73,7 +71,7 @@ export class LangchainConversationModelImpl implements ConversationModel {
             }),
             qaChainOptions: {
                 type: 'stuff',
-                prompt: partialPrompt,
+                prompt: chatPrompt,
             },
         });
 
