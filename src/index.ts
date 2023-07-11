@@ -10,32 +10,26 @@ app.use(urlencoded({ extended: false }));
 app.use(express.json());
 
 const listen = async (req: Request, res: Response) => {
+    const phone = req.body.From;
     const message = req.body.Body;
-    const userPhone = req.body.From;
-    console.log(`Mensaje recibido de ${userPhone}: ${message}`);
-
-    const sent = await processMessage(userPhone, message);
-    console.log(`Mensaje enviado a ${userPhone}:`, sent);
-};
-
-const processMessage = async (to: string, message: string) => {
     const payload = {
-        body: {
-            phone: to,
-            message,
-        },
+        body: { phone, message },
     };
+    console.log(`Mensaje recibido de ${phone}: ${message}`);
+
     try {
         const controller = AppContainer.get<ConversationController>(ConversationController);
         const { result } = await controller.conversation(payload);
+        console.log(`Mensaje enviado a ${phone}:`, result);
+        res.status(200).send('ok');
         return result;
     } catch (error: any) {
         console.error('Error:', error);
+        res.status(500).send('server error');
         return { error };
     }
 };
 
-app.get('/', async (req: Request, res: Response) => res.send('Hola mundo :)'));
 app.post('/whatsapp', listen);
 
 app.listen(port, () => console.log(`Servidor en el puerto: ${port}`));

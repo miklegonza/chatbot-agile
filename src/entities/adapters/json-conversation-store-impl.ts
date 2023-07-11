@@ -13,7 +13,7 @@ export class JSONConversationStoreImpl implements ConversationStore {
             phone: data.phone,
             date: messageDate,
             message: data.message,
-            AIResponse: data.AIResponse,
+            response: data.response,
             tokens: data.tokens,
             sid: data.sid,
         };
@@ -37,7 +37,7 @@ export class JSONConversationStoreImpl implements ConversationStore {
         try {
             const messages = history.history;
             const summary = messages
-                .map((obj: any) => 'Colaborador: ' + obj.message + '\nAsesor: ' + obj.AIResponse)
+                .map((obj: any) => 'Colaborador: ' + obj.message + '\nAsesor: ' + obj.response)
                 .join('\n');
             return summary;
         } catch (error: any) {

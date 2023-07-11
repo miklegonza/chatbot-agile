@@ -1,10 +1,10 @@
 import 'dotenv/config';
 import { injectable } from 'inversify';
 import { Twilio } from 'twilio';
-import { ProviderManager } from '../ports/provider-manager';
+import { ConversationSender } from '../ports/conversation-sender';
 
 @injectable()
-export class TwilioProviderManagerImpl implements ProviderManager {
+export class TwilioConversationSenderImpl implements ConversationSender {
     private readonly accountSID = process.env.TWILIO_SID;
     private readonly authToken = process.env.TWILIO_AUTH_TOKEN;
     private readonly fromNumber = process.env.TWILIO_FROM as string;

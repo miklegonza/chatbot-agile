@@ -1,7 +1,8 @@
 export const UTILS = {
     ConversationModel: Symbol.for('ConversationModel'),
     ConversationStore: Symbol.for('ConversationStore'),
-    ProviderManager: Symbol.for('ProviderManager'),
+    ConversationSender: Symbol.for('ConversationSender'),
+    ConversationReceiver: Symbol.for('ConversationReceiver'),
 };
 
 export const SERVICES = {
