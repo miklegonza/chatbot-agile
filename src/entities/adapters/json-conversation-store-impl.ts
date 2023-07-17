@@ -5,7 +5,8 @@ import { ConversationStore } from '../ports/conversation-store';
 
 @injectable()
 export class JSONConversationStoreImpl implements ConversationStore {
-    async saveInteraction(data: any, conversationHistory?: any): Promise<any> {
+    async saveInteraction(data: any): Promise<any> {
+        const conversationHistory = await this.getHistory(data.phone);
         const filename = data.phone.substring(10) + '.json';
         const path = `./chats/${filename}`;
         const messageDate = moment().format('DD-MM-YYYY hh:mm');
@@ -44,7 +45,7 @@ export class JSONConversationStoreImpl implements ConversationStore {
             return error.code === 'ENOENT' ? error.code : { error };
         }
     }
-    async getHistory(phone: string): Promise<any> {
+    private async getHistory(phone: string): Promise<any> {
         try {
             const filename = phone.substring(10) + '.json';
             const path = `./chats/${filename}`;

@@ -9,6 +9,7 @@ import { ConversationSummaryMemory } from 'langchain/memory';
 import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { readFile } from 'node:fs/promises';
+import { TEMPLATES } from '../../dictionaries/prompts';
 import { ConversationModel } from '../ports/conversation-model';
 
 @injectable()
@@ -19,14 +20,7 @@ export class LangchainConversationModelImpl implements ConversationModel {
     private embeddingsModel = new OpenAIEmbeddings();
     private languageModel = new OpenAI({ modelName: 'gpt-3.5-turbo', temperature: 0, verbose: true });
     private readonly templatePath = './src/behaviors/template-reduced.json';
-    private readonly systemTemplate = `La conversación con el colaborador se ha desarrollado de la siguiente manera:
-    Historial: {chat_history}
-    
-    Usa la información contenida en el historial y el siguiente contexto para responder la pregunta del usuario en máximo 60 palabras.
-    Si la respuesta a la pregunta involucra un listado de elementos, genera la respuesta en forma de items resumiendo en una frase cada elemento. 
-    Si no conoces la respuesta o la pregunta no está relacionada con el contexto dado, dí que no puedes responder a la pregunta, no intentes construir una respuesta.
-    
-    Contexto: {context}`;
+    private readonly systemTemplate = TEMPLATES.systemTemplate;
 
     /**
      * Creates the <ConversationalRetrievalQAChain/> that converts the retreived text to a
@@ -36,7 +30,8 @@ export class LangchainConversationModelImpl implements ConversationModel {
      * @returns Object with the result to be sent to the user
      */
     async buildChain(payload: any): Promise<any> {
-        const vectorStore = await this.queryPinecone(payload);
+        const { message } = payload;
+        const vectorStore = await this.queryPinecone(message);
 
         const chain = ConversationalRetrievalQAChain.fromLLM(this.languageModel, vectorStore.asRetriever(), {
             inputKey: 'question',
@@ -52,14 +47,13 @@ export class LangchainConversationModelImpl implements ConversationModel {
         });
 
         const result = await chain.call({
-            question: payload,
+            question: message,
         });
 
-        return {
-            message: payload,
-            response: result.text,
-            tokens: 10, // TODO
-        };
+        payload.response = result.text;
+        payload.tokens = 10; // TODO
+
+        return payload;
     }
 
     /**
@@ -80,10 +74,10 @@ export class LangchainConversationModelImpl implements ConversationModel {
         const pineconeIndex = client.Index(indexName);
         const pineconeStore = await PineconeStore.fromExistingIndex(this.embeddingsModel, {
             pineconeIndex,
-            namespace: 'kanban',
+            namespace: 'scrum' || 'kanban',
         });
         const matches = await pineconeStore.similaritySearchWithScore(question, 2);
-        
+
         if (!matches.length) {
             return Promise.reject('No hay similitudes. GPT-3 no se usó'); // TODO
         }

@@ -1,12 +1,12 @@
 import { injectable } from 'inversify';
+import { DEFAULT_PROMPTS } from '../../dictionaries/prompts';
 import { ConversationReceiver } from '../ports/conversation-receiver';
 
 @injectable()
 export class ConversationReceiverImpl implements ConversationReceiver {
-    private helloMessage = `¡Hola! Hablas con el chatbot especializado en agilidad del Banco Popular.
-    Recuerda que en cualquier momento puedes finalizar la conversación con la palabra 'Terminar'.
-    ¿En qué te puedo ayudar hoy? :)`;
-    private byeMessage = `Fue un placer responder a tus preguntas. El equipo del Banco Popular quiere concer tu experiencia con el chatbot. Ayúdanos con una breve encuesta de satisfacción a continuación: <link>`;
+    private readonly helloMessage = DEFAULT_PROMPTS.helloMessage;
+    private readonly lengthMessage = DEFAULT_PROMPTS.lengthMessage;
+    private readonly byeMessage = DEFAULT_PROMPTS.byeMessage;
 
     async receiveMessage(payload: any): Promise<any> {
         return this.validateDefault(payload);
@@ -15,34 +15,36 @@ export class ConversationReceiverImpl implements ConversationReceiver {
     private async validateDefault(payload: any): Promise<any> {
         const message = payload.message.toLowerCase().trim();
 
-        if (
-            message.includes('hola') ||
-            message.includes('buenos días') ||
-            message.includes('buenas tardes') ||
-            message.includes('buenas noches') ||
-            message.includes('hello') ||
-            message.includes('hi')
-        ) {
+        const helloSequence = ['hola', 'holi', 'buenos días', 'buenas tardes', 'buenas noches', 'hello'];
+        const byeSequence = ['adiós', 'adios', 'chao', 'terminar', 'finalizar', 'bye'];
+
+        payload.default = true;
+
+        if (!this.validateLength(message)) {
+            payload.response = this.lengthMessage;
+            return payload;
+        }
+
+        if (this.validateSequence(message, helloSequence)) {
             payload.response = this.helloMessage;
-            payload.default = true;
-        } else if (
-            message.includes('adiós') ||
-            message.includes('chao') ||
-            message.includes('terminar') ||
-            message.includes('finalizar') ||
-            message.includes('bye')
-        ) {
+        } else if (this.validateSequence(message, byeSequence)) {
             payload.response = this.byeMessage;
-            payload.default = true;
         } else {
             payload.default = false;
         }
         return payload;
     }
 
+    private validateSequence(message: string, sequence: string[]): boolean {
+        return sequence.some((word) => message.includes(word));
+    }
+
+    private validateLength(message: string): boolean {
+        return message.length < 200;
+    }
+
     private validatePhone(phone: string): boolean {
         const pattern = /^\+[1-9]\d{1,14}$/;
-
         return pattern.test(phone);
     }
 }

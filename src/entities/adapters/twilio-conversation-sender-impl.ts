@@ -9,15 +9,18 @@ export class TwilioConversationSenderImpl implements ConversationSender {
     private readonly authToken = process.env.TWILIO_AUTH_TOKEN;
     private readonly fromNumber = process.env.TWILIO_FROM as string;
 
-    async sendMessage(phone: string, message: string): Promise<any> {
+    async sendMessage(payload: any): Promise<any> {
+        const { phone, response } = payload;
         try {
             const client = new Twilio(this.accountSID, this.authToken);
             const mapMessage = {
-                body: message,
+                body: response,
                 to: phone,
                 from: this.fromNumber,
             };
-            return await client.messages.create(mapMessage);
+            const result = await client.messages.create(mapMessage);
+            payload.sid = result.sid;
+            return payload;
         } catch (error: any) {
             console.error('Error:', error);
             return { error };

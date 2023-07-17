@@ -24,32 +24,22 @@ export class ConversationServiceImpl implements ConversationService {
         return Promise.resolve(await this.conversationReceiver.receiveMessage(payload))
             .then(async (data) => {
                 if (!data.default) {
-                    const result = await this.conversationModel.buildChain(data.message);
-                    result.phone = data.phone;
-                    return result;
+                    return await this.conversationModel.buildChain(data);
                 }
                 return data;
             })
-            .then(async (data) => {
-                return this.conversationSender.sendMessage(data.phone, data.response);
-            })
-            .then(async (data) => {
-                console.log('SID: ', data.sid);
-                const interaction = {
-                    phone: data.to,
-                    message: data.message,
-                    response: data.body,
-                    tokens: data.tokens,
-                    sid: data.sid,
-                };
-                await this.conversationStore.getHistory(interaction.phone).then(async (data) => {
-                    await this.conversationStore.saveInteraction(interaction, data);
-                });
-                return interaction.response;
-            })
             .catch((error) => {
-                console.error(error);
-                return 'Hubo un problema procesando el mensaje. ' + error.code;
+                console.error(error.message);
+                const errorMsg = 'Hubo un problema procesando el mensaje.';
+                payload.response = errorMsg;
+                return payload;
+            })
+            .finally(async () => {
+                return Promise.resolve(await this.conversationSender.sendMessage(payload))
+                    .then(async (data) => {
+                        console.log('SID: ', data.sid);
+                        return await this.conversationStore.saveInteraction(data);
+                    });
             });
     }
 }

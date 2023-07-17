@@ -1,3 +1,3 @@
 export interface ConversationSender {
-    sendMessage(phone: string, message: string): Promise<any>;
+    sendMessage(payload: any): Promise<any>;
 }
