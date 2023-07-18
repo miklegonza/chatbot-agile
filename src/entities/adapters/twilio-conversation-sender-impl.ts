@@ -12,14 +12,18 @@ export class TwilioConversationSenderImpl implements ConversationSender {
     async sendMessage(payload: any): Promise<any> {
         const { phone, response } = payload;
         try {
-            const client = new Twilio(this.accountSID, this.authToken);
-            const mapMessage = {
-                body: response,
-                to: phone,
-                from: this.fromNumber,
-            };
-            const result = await client.messages.create(mapMessage);
-            payload.sid = result.sid;
+            if (response.length > 1) {
+                const client = new Twilio(this.accountSID, this.authToken);
+                const mapMessage = {
+                    body: response,
+                    to: phone,
+                    from: this.fromNumber,
+                };
+                const result = await client.messages.create(mapMessage);
+                payload.sid = result.sid;
+            } else {
+                payload.sid = '---';
+            }
             return payload;
         } catch (error: any) {
             console.error('Error:', error);

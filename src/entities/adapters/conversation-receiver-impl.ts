@@ -20,6 +20,11 @@ export class ConversationReceiverImpl implements ConversationReceiver {
 
         payload.default = true;
 
+        if (message.length < 4) {
+            payload.response = '';
+            return payload;
+        }
+
         if (!this.validateLength(message)) {
             payload.response = this.lengthMessage;
             return payload;
