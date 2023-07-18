@@ -1,14 +1,18 @@
 import { PineconeClient } from '@pinecone-database/pinecone';
 import 'dotenv/config';
 import { injectable } from 'inversify';
-import { ConversationalRetrievalQAChain } from 'langchain/chains';
+import { LLMChain, RetrievalQAChain, SequentialChain } from 'langchain/chains';
 import { Document } from 'langchain/document';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { OpenAI } from 'langchain/llms/openai';
-import { ConversationSummaryMemory } from 'langchain/memory';
-import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
+import {
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    PromptTemplate,
+    SystemMessagePromptTemplate,
+} from 'langchain/prompts';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { TEMPLATES } from '../../dictionaries/prompts';
 import { ConversationModel } from '../ports/conversation-model';
 
@@ -30,28 +34,45 @@ export class LangchainConversationModelImpl implements ConversationModel {
      * @returns Object with the result to be sent to the user
      */
     async buildChain(payload: any): Promise<any> {
-        const { message } = payload;
+        const { message, summary } = payload;
         const vectorStore = await this.queryPinecone(message);
 
-        const chain = ConversationalRetrievalQAChain.fromLLM(this.languageModel, vectorStore.asRetriever(), {
+        const prompt = await this.buildPrompt().partial({ history: summary });
+
+        const qaChain = RetrievalQAChain.fromLLM(this.languageModel, vectorStore.asRetriever(), {
             inputKey: 'question',
-            outputKey: 'answer',
-            memory: new ConversationSummaryMemory({
-                memoryKey: 'chat_history',
-                llm: this.languageModel,
-            }),
-            qaChainOptions: {
-                type: 'stuff',
-                prompt: this.buildPrompt(),
-            },
+            prompt,
+            verbose: true,
         });
 
-        const result = await chain.call({
+        const summaryPromptTemplate = new PromptTemplate({
+            template: TEMPLATES.summaryTemplate,
+            inputVariables: ['history', 'question', 'text'],
+        });
+
+        const summaryChain = new LLMChain({
+            llm: this.languageModel,
+            prompt: summaryPromptTemplate,
+            outputKey: 'conversationSummary',
+        });
+
+        const chain = new SequentialChain({
+            chains: [qaChain, summaryChain],
+            inputVariables: ['history', 'question'],
+            outputVariables: ['text', 'conversationSummary'],
+            verbose: true,
+        });
+
+        const chainExec = await chain.call({
+            history: summary,
             question: message,
         });
 
-        payload.response = result.text;
+        await this.deleteVectors();
+
+        payload.response = chainExec.text;
         payload.tokens = 10; // TODO
+        payload.summary = chainExec.conversationSummary;
 
         return payload;
     }
@@ -109,6 +130,21 @@ export class LangchainConversationModelImpl implements ConversationModel {
         ];
 
         return ChatPromptTemplate.fromPromptMessages(messages);
+    }
+
+    private async deleteVectors(): Promise<void> {
+        const indexName = this.PINECONE_INDEX || '';
+        const client = new PineconeClient();
+        await client.init({
+            apiKey: this.PINECONE_API_KEY || '',
+            environment: this.PINECONE_ENVIRONMENT || '',
+        });
+        const index = client.Index(indexName);
+
+        await index.delete1({
+            deleteAll: true,
+            namespace: 'ignore',
+        });
     }
 
     /**

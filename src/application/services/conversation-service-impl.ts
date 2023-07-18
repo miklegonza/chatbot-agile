@@ -23,6 +23,9 @@ export class ConversationServiceImpl implements ConversationService {
         const payload = event.body;
         return Promise.resolve(await this.conversationReceiver.receiveMessage(payload))
             .then(async (data) => {
+                return await this.conversationStore.getSummary(data);
+            })
+            .then(async (data) => {
                 if (!data.default) {
                     return await this.conversationModel.buildChain(data);
                 }
@@ -35,11 +38,10 @@ export class ConversationServiceImpl implements ConversationService {
                 return payload;
             })
             .finally(async () => {
-                return Promise.resolve(await this.conversationSender.sendMessage(payload))
-                    .then(async (data) => {
-                        console.log('SID: ', data.sid);
-                        return await this.conversationStore.saveInteraction(data);
-                    });
+                return Promise.resolve(await this.conversationSender.sendMessage(payload)).then(async (data) => {
+                    console.log('SID: ', data.sid);
+                    return await this.conversationStore.saveInteraction(data);
+                });
             });
     }
 }
