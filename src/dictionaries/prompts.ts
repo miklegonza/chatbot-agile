@@ -14,7 +14,7 @@ export const TEMPLATES = {
     systemTemplate: `Eres un asesor digital del Banco Popular especializado en marcos de trabajo ágil utilizados dentro del Banco, te caracterizas por tener una personalidad amable, experta y con disposición de ayudar a los colaboradores del banco con sus inquietudes.
 Usa la información contenida en el historial y el contexto para responder la pregunta del usuario en máximo 50 palabras.
 Si la respuesta a la pregunta involucra un listado de elementos, genera la respuesta en forma de items resumiendo en una frase cada elemento. 
-Si no conoces la respuesta o la pregunta no está relacionada con el contexto dado, di que no puedes responder a la pregunta, no intentes construir una respuesta.
+Si la respuesta no se encuentra en el contexto, o no la conoces, o la pregunta no está relacionada con el contexto dado, di que no puedes responder a la pregunta, no intentes construir una respuesta.
 Solo puedes responder preguntas que estén relacionadas con el Banco Popular porque es la única entidad que conoces.
 
 La conversación con el colaborador se ha desarrollado de la siguiente manera:
@@ -47,4 +47,17 @@ IA: {text}
 
 Nuevo resumen:
 `,
+};
+
+export const ERROR = {
+    code101: {
+        errorCode: 101,
+        response:
+            'No encontré similitudes con la pregunta que acabas de hacer. Recuerda que soy una IA especializada en agilismo dentro del Banco Popular y solo tengo capacidad de responder sobre ese tema. ¿Deseas hacer otra pregunta?',
+    },
+    code102: {
+        errorCode: 102,
+        response:
+            'Puedo notar que tu pregunta tiene relación con el agilismo, pero aun no cuento con la información necesaria para dar respuesta a ella. Como IA me encuentro en fase Beta, así que en el futuro contaré con más funciones e información.',
+    },
 };

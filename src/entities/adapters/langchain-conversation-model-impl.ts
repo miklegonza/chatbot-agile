@@ -12,8 +12,8 @@ import {
     SystemMessagePromptTemplate,
 } from 'langchain/prompts';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { readFile, writeFile } from 'node:fs/promises';
-import { TEMPLATES } from '../../dictionaries/prompts';
+import { readFile } from 'node:fs/promises';
+import { ERROR, TEMPLATES } from '../../dictionaries/prompts';
 import { ConversationModel } from '../ports/conversation-model';
 
 @injectable()
@@ -35,50 +35,59 @@ export class LangchainConversationModelImpl implements ConversationModel {
      */
     async buildChain(payload: any): Promise<any> {
         const { message, summary } = payload;
-        const vectorStore = await this.queryPinecone(message);
+        try {
+            const vectorStore = await this.queryPinecone(message);
 
-        const prompt = await this.buildPrompt().partial({ history: summary });
+            const prompt = await this.buildPrompt().partial({ history: summary });
 
-        const qaChain = RetrievalQAChain.fromLLM(this.languageModel, vectorStore.asRetriever(), {
-            inputKey: 'question',
-            prompt,
-            verbose: true,
-        });
+            const qaChain = RetrievalQAChain.fromLLM(this.languageModel, vectorStore.asRetriever(), {
+                inputKey: 'question',
+                prompt,
+            });
 
-        const summaryPromptTemplate = new PromptTemplate({
-            template: TEMPLATES.summaryTemplate,
-            inputVariables: ['history', 'question', 'text'],
-        });
+            const summaryPromptTemplate = new PromptTemplate({
+                template: TEMPLATES.summaryTemplate,
+                inputVariables: ['history', 'question', 'text'],
+            });
 
-        const summaryChain = new LLMChain({
-            llm: this.languageModel,
-            prompt: summaryPromptTemplate,
-            outputKey: 'conversationSummary',
-        });
+            const summaryChain = new LLMChain({
+                llm: this.languageModel,
+                prompt: summaryPromptTemplate,
+                outputKey: 'conversationSummary',
+                verbose: true,
+            });
 
-        const chain = new SequentialChain({
-            chains: [qaChain, summaryChain],
-            inputVariables: ['history', 'question'],
-            outputVariables: ['text', 'conversationSummary'],
-            verbose: true,
-        });
+            const chain = new SequentialChain({
+                chains: [qaChain, summaryChain],
+                inputVariables: ['history', 'question'],
+                outputVariables: ['text', 'conversationSummary'],
+            });
 
-        const chainExec = await chain.call({
-            history: summary,
-            question: message,
-        });
+            const chainExec = await chain.call({
+                history: summary,
+                question: message,
+            });
 
-        await this.deleteVectors();
+            await this.deleteVectors();
 
-        payload.response = chainExec.text;
-        payload.tokens = 10; // TODO
-        payload.summary = chainExec.conversationSummary;
-
+            payload.response = chainExec.text;
+            payload.tokens = 10; // TODO
+            payload.summary = chainExec.conversationSummary;
+        } catch (err: any) {
+            const { error } = err;
+            payload.response = error.response;
+            payload.tokens = 0;
+            payload.summary = summary;
+        }
         return payload;
     }
 
     /**
      * Creates the Pinecone client and gets the index instance to make the similarity search.
+     *
+     * Error codes
+     * 101: There are no similarities
+     * 102: It's related to Agile but there's no info
      *
      * @param question The question to be converted to embeddings and compared to the DB info
      * @returns Pinecone vector store with the information retreived
@@ -93,15 +102,33 @@ export class LangchainConversationModelImpl implements ConversationModel {
         console.log('Ejecutando el query en Pinecone...');
 
         const pineconeIndex = client.Index(indexName);
+        const namespace = question.toLowerCase().includes('kanban') ? 'kanban' : 'scrum';
+
         const pineconeStore = await PineconeStore.fromExistingIndex(this.embeddingsModel, {
             pineconeIndex,
-            namespace: 'scrum' || 'kanban',
+            namespace,
         });
-        const matches = await pineconeStore.similaritySearchWithScore(question, 2);
+        const matches = await pineconeStore.similaritySearchWithScore(question, 5);
 
-        if (!matches.length) {
-            return Promise.reject('No hay similitudes. GPT-3 no se usó'); // TODO
+        /* const similarity = matches[0][1] * 100;
+        if (!matches.length || similarity < 78) {
+            return Promise.reject({ error: ERROR.code101 }); // TODO
         }
+        if (similarity >= 78 && similarity < 82) {
+            return Promise.reject({ error: ERROR.code102 });
+        } */
+
+        // DELETE
+        matches.forEach((match) => {
+            if (match[1] * 100 >= 82) {
+                console.log('MATCHES:::::::::::');
+                console.log('CONTENT:', match[0].metadata.pageContent.replaceAll('\n', ''));
+                console.log('PATH:', match[0].metadata.txtPath);
+                console.log('SIMILITUD:', match[1] * 100, '\n');
+            } else {
+                console.log('NO SIMILITUD:', match[1] * 100, '\n');
+            }
+        });
 
         const concatPageContent = matches
             .map((match: any) => match[0].metadata.pageContent)
